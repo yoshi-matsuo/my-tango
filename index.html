@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>英単語当てゲーム</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .word-display {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      min-height: 120px;
+      align-items: center;
+      margin-bottom: 2.5rem;
+      padding: 1rem;
+    }
+
+    .letter-box {
+      width: 60px;
+      height: 70px;
+      border-bottom: 4px solid #ecf0f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #3498db;
+      font-family: 'Courier New', monospace;
+      text-transform: uppercase;
+      margin: 0.25rem;
+    }
+
+    .letter-box.revealed {
+      color: #2ecc71;
+      text-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+    }
+
+    .go-button {
+      background: linear-gradient(145deg, #3498db, #2980b9);
+      color: white;
+      border: none;
+      padding: 1.2rem 4rem;
+      font-size: 1.8rem;
+      font-weight: bold;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 30px rgba(52, 152, 219, 0.3);
+    }
+
+    .go-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(52, 152, 219, 0.4);
+    }
+
+    .go-button:active {
+      transform: translateY(0);
+    }
+
+    .status {
+      margin-top: 1.5rem;
+      color: #bdc3c7;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="word-display" id="wordDisplay"></div>
+    <button class="go-button" id="goButton">GO</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    const words = [
+      // 中学3年レベル
+      'environment', 'experience', 'opportunity', 'government', 'technology',
+      'population', 'communication', 'information', 'education', 'generation',
+      'tradition', 'condition', 'situation', 'expression', 'impression',
+      'adventure', 'atmosphere', 'volunteer', 'interview', 'introduce',
+      'necessary', 'especially', 'actually', 'recently', 'finally',
+      // 高校1年レベル
+      'consequence', 'significant', 'responsible', 'independent', 'comfortable',
+      'impossible', 'mysterious', 'enthusiastic', 'professional', 'artificial',
+      'agriculture', 'manufacture', 'architecture', 'literature', 'temperature',
+      'relationship', 'championship', 'scholarship', 'neighborhood', 'throughout',
+      'accomplish', 'appreciate', 'contribute', 'demonstrate', 'investigate',
+      // 高校2年レベル
+      'phenomenon', 'circumstances', 'contemporary', 'controversial', 'comprehensive',
+      'fundamental', 'remarkable', 'considerable', 'psychological', 'philosophical',
+      'characteristic', 'discrimination', 'administration', 'representative', 'determination',
+      'acknowledge', 'distinguish', 'exaggerate', 'participate', 'concentrate',
+      'perspective', 'alternative', 'initiative', 'competitive', 'conservative',
+      // 高校3年レベル
+      'substantial', 'inevitable', 'sophisticated', 'extraordinary', 'overwhelming',
+      'ambiguous', 'bureaucracy', 'catastrophe', 'diplomatic', 'eloquent',
+      'hypothesis', 'indigenous', 'jurisdiction', 'manipulation', 'negligible',
+      'preliminary', 'propaganda', 'revolutionary', 'simultaneous', 'unanimous',
+      'vulnerable', 'withdrawal', 'authentic', 'conscience', 'enthusiasm'
+    ];
+
+    let currentWord = '';
+    let revealedCount = 0;
+    let usedWords = [];
+    let revealOrder = [];
+
+    function shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    }
+
+    function getRandomWord() {
+      if (usedWords.length >= words.length) {
+        usedWords = [];
+      }
+      let word;
+      do {
+        word = words[Math.floor(Math.random() * words.length)];
+      } while (usedWords.includes(word));
+      usedWords.push(word);
+      return word;
+    }
+
+    function createLetterBoxes(word) {
+      const display = document.getElementById('wordDisplay');
+      display.innerHTML = '';
+
+      for (let i = 0; i < word.length; i++) {
+        const box = document.createElement('div');
+        box.className = 'letter-box';
+        box.id = `letter-${i}`;
+        display.appendChild(box);
+      }
+    }
+
+    function revealLetter(index) {
+      const box = document.getElementById(`letter-${index}`);
+      if (box) {
+        box.textContent = currentWord[index];
+        box.classList.add('revealed');
+      }
+    }
+
+    function updateStatus() {
+      const status = document.getElementById('status');
+      if (currentWord === '') {
+        status.textContent = '';
+      } else if (revealedCount >= currentWord.length) {
+        status.textContent = `正解: ${currentWord.toUpperCase()} ─ 次の単語へ`;
+      } else {
+        status.textContent = `${revealedCount} / ${currentWord.length} 文字`;
+      }
+    }
+
+    function handleGo() {
+      if (currentWord === '' || revealedCount >= currentWord.length) {
+        // 新しい単語を開始
+        currentWord = getRandomWord();
+        revealedCount = 0;
+        createLetterBoxes(currentWord);
+        // 表示順をランダムに決定
+        revealOrder = shuffleArray([...Array(currentWord.length).keys()]);
+      }
+
+      // 次の1文字をランダムな位置に表示
+      if (revealedCount < currentWord.length) {
+        revealLetter(revealOrder[revealedCount]);
+        revealedCount++;
+      }
+
+      updateStatus();
+    }
+
+    document.getElementById('goButton').addEventListener('click', handleGo);
+  </script>
+</body>
+</html>
